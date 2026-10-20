@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Collector</title>
+    <style>
+        :root { --bg: #f0f2f5; --card-bg: #ffffff; --text: #1a1a1a; --accent: #2563eb; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 30px; }
+
+        .controls { display: flex; gap: 15px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        button { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 16px; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-collect { background: #10b981; color: white; }
+        .btn-collect:hover { background: #059669; }
+        .btn-llm { background: #8b5cf6; color: white; }
+        .btn-llm:hover { background: #7c3aed; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* Стили для выпадающего списка */
+        .period-select { padding: 12px 16px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 16px; font-weight: 600; color: #334155; cursor: pointer; outline: none; background: white; transition: 0.2s; }
+        .period-select:hover, .period-select:focus { border-color: var(--accent); }
+
+        .section-title { font-size: 22px; margin-bottom: 15px; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+
+        /* Стили для блока сводки */
+        .llm-section { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .llm-result { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; line-height: 1.6; font-size: 16px; min-height: 80px; color: #475569; }
+        .llm-result a { color: var(--accent); text-decoration: underline; font-weight: bold; }
+
+        /* Стили для выпадающего списка новостей */
+        .news-details { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .news-details summary { cursor: pointer; font-weight: bold; font-size: 20px; color: #334155; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between; }
+        .news-details summary::-webkit-details-marker { display: none; }
+        .news-details summary:hover { color: var(--accent); }
+        .news-details summary::after { content: '▼'; font-size: 14px; color: #94a3b8; transition: 0.3s; }
+        .news-details[open] summary::after { transform: rotate(180deg); }
+
+        .news-grid { display: grid; gap: 15px; margin-top: 20px; }
+        .news-card { background: var(--bg); padding: 15px; border-radius: 8px; border-left: 4px solid var(--accent); }
+        .news-title { font-size: 16px; font-weight: 600; margin: 0 0 10px 0; }
+        .news-title a { color: var(--text); text-decoration: none; }
+        .news-title a:hover { color: var(--accent); }
+        .news-meta { font-size: 13px; color: #64748b; display: flex; justify-content: space-between; }
+
+        /* Чат */
+        .chat-container { background: #ffffff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); overflow: hidden; margin-top: 40px; }
+        .chat-history { padding: 20px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #f8fafc; }
+        .chat-message { padding: 12px 16px; border-radius: 8px; max-width: 80%; line-height: 1.5; }
+        .chat-message.user { background: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+        .chat-message.bot { background: white; border: 1px solid #e2e8f0; align-self: flex-start; border-bottom-left-radius: 0; }
+        .chat-message a { color: #2563eb; }
+        .chat-input-area { display: flex; padding: 15px; background: white; border-top: 1px solid #e2e8f0; gap: 10px; }
+        .chat-input-area input { flex-grow: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; outline: none; }
+        .chat-input-area input:focus { border-color: var(--accent); }
+        .chat-input-area button { background: var(--accent); color: white; padding: 12px 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>News Collector</h1>
+        <p>Сбор и анализ новостей в реальном времени</p>
+    </div>
+
+    <!-- Панель управления -->
+    <div class="controls">
+        <select id="periodSelect" class="period-select" onchange="handlePeriodChange()">
+            <option value="2h">Последние 2 часа</option>
+            <option value="6h">Последние 6 часов</option>
+            <option value="day" selected>За последние 24 часа</option>
+            <option value="week">За последнюю неделю</option>
+        </select>
+
+        <button class="btn-collect" id="btnCollect" onclick="collectNews()">
+             Собрать новости
+        </button>
+        <button class="btn-llm" id="btnSummary" onclick="getLlmSummary()">
+            Сгенерировать LLM-сводку
+        </button>
+    </div>
+
+    <!-- БЛОК СВОДКИ -->
+    <div class="llm-section">
+        <h2 class="section-title">🤖 Сводка от нейросети</h2>
+        <div class="llm-result" id="llmOutput">
+            Нажмите кнопку «Сгенерировать LLM-сводку», чтобы нейросеть проанализировала новости за выбранный период...
+        </div>
+    </div>
+
+    <!-- ВЫПАДАЮЩИЙ СПИСОК НОВОСТЕЙ -->
+    <details class="news-details">
+        <summary>Лента новостей (нажмите, чтобы развернуть)</summary>
+        <div class="news-grid" id="newsGrid">
+            <p style="text-align:center; color: #64748b;">Загрузка новостей...</p>
+        </div>
+    </details>
+
+    <!-- ЧАТ С ИИ -->
+    <h2 class="section-title"> Чат с новостным ИИ</h2>
+    <div class="chat-container">
+        <div class="chat-history" id="chatHistory">
+            <div class="chat-message bot">Привет! Я изучил последние новости из базы. Спроси меня: "Что произошло за последние 2 часа?" или "Выпиши новости про экономику".</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Напишите ваш вопрос..." onkeypress="handleKeyPress(event)">
+            <button id="chatBtn" onclick="sendChatMessage()">Отправить</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Функция для превращения Markdown-ссылок в кликабельные HTML-ссылки
+    function renderMarkdown(text) {
+        let html = text.replace(/\[([^\]]+)\]\((http[^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+        return html.replace(/\n/g, '<br>');
+    }
+
+    // Запускаем загрузку новостей при открытии страницы
+    document.addEventListener('DOMContentLoaded', loadNews);
+
+    // Обработчик смены периода
+    function handlePeriodChange() {
+        document.getElementById('llmOutput').innerHTML = 'Период изменен. Нажмите «Сгенерировать LLM-сводку», чтобы получить новый анализ.';
+        loadNews();
+    }
+
+    async function loadNews() {
+        const grid = document.getElementById('newsGrid');
+        const period = document.getElementById('periodSelect').value;
+
+        grid.innerHTML = '<p style="text-align:center; color: #64748b;">Загрузка...</p>';
+
+        try {
+            const response = await fetch('/api/news?period=' + period);
+            const newsList = await response.json();
+
+            if (newsList.length === 0) {
+                grid.innerHTML = '<p style="text-align:center; color: #64748b;">Новостей за этот период нет. Попробуйте выбрать другой период или нажмите "Собрать новости".</p>';
+                return;
+            }
+
+            grid.innerHTML = newsList.map(n => `
+                <div class="news-card">
+                    <div class="news-title">
+                        <a href="${n.link}" target="_blank">${n.title}</a>
+                    </div>
+                    <div class="news-meta">
+                        <span>Источник: ${new URL(n.source).hostname}</span>
+                        <span>${new Date(n.publishedAt).toLocaleString('ru-RU')}</span>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            grid.innerHTML = '<p style="color:red; text-align:center;">Ошибка загрузки новостей</p>';
+        }
+    }
+
+    async function collectNews() {
+        const btn = document.getElementById('btnCollect');
+        btn.disabled = true;
+        btn.innerHTML = "Собираем...";
+
+        try {
+            const response = await fetch('/collect', { method: 'POST' });
+            const data = await response.json();
+            let msg = "Сбор завершен!\n";
+            for (const [src, count] of Object.entries(data)) {
+                try {
+                    msg += `Добавлено из ${new URL(src).hostname}: ${count}\n`;
+                } catch(e) {
+                    msg += `Добавлено из ${src}: ${count}\n`;
+                }
+            }
+            alert(msg);
+            await loadNews();
+        } catch (e) {
+            alert("Ошибка при сборе: " + e);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = "<span></span> Собрать новости";
+        }
+    }
+
+    async function getLlmSummary() {
+        const btn = document.getElementById('btnSummary');
+        const output = document.getElementById('llmOutput');
+        const period = document.getElementById('periodSelect').value;
+
+        btn.disabled = true;
+        btn.innerHTML = "Анализ...";
+        output.innerHTML = "Нейросеть читает новости и генерирует сводку. Это может занять до 1 минуты...";
+
+        try {
+            const response = await fetch('/summary?period=' + period);
+            const text = await response.text();
+            output.innerHTML = renderMarkdown(text);
+        } catch (e) {
+            output.innerHTML = "Ошибка при генерации: " + e;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = "<span></span> Сгенерировать LLM-сводку";
+        }
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') sendChatMessage();
+    }
+
+    async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const btn = document.getElementById('chatBtn');
+        const history = document.getElementById('chatHistory');
+        const message = input.value.trim();
+
+        if (!message) return;
+
+        // Сообщение пользователя
+        history.innerHTML += `<div class="chat-message user">${message}</div>`;
+        input.value = '';
+        btn.disabled = true;
+
+        // Индикатор загрузки
+        const loadingId = 'loading-' + Date.now();
+        history.innerHTML += `<div class="chat-message bot" id="${loadingId}">Печатает...</div>`;
+        history.scrollTop = history.scrollHeight;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: message })
+            });
+            const data = await response.json();
+
+            document.getElementById(loadingId).innerHTML = renderMarkdown(data.reply);
+        } catch (e) {
+            document.getElementById(loadingId).innerText = "Ошибка соединения.";
+        } finally {
+            btn.disabled = false;
+            history.scrollTop = history.scrollHeight;
+        }
+    }
+</script>
+</body>
+</html>

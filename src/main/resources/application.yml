@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/news_db
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+news:
+  sources:
+    - https://www.kommersant.ru/rss/news.xml
+    - http://www.vedomosti.ru/rss/news
+    - https://tass.ru/rss/v2.xml
+    - https://www.cbr.ru/rss/RssPress
+    - http://feeds.bbci.co.uk/news/world/rss.xml
+    - https://www.ft.com/rss/home
+    - https://www.theguardian.com/world/rss
+    - https://www.forbes.com/business/feed/
+    - https://www.championat.com/rss/article
+    - https://www.cbr.ru/rss/RssPress
+    - https://www.cbr.ru/rss/RssNews
+  request-timeout: PT10S
+  collect-initial-delay: PT5S
+  collect-interval: PT15M
+  llm:
+    enabled: false
+    base-url: https://api.openai.com/v1
+    api-key:
+    model: gpt-4o-mini

@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: news-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: news_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: news-ollama
+
+    volumes:
+      - ollama_data:/root/.ollama
+  ollama-model-loader:
+    image: ollama/ollama:latest
+    container_name: news-ollama-loader
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for Ollama to start...';
+      sleep 5;
+      echo 'Pulling model qwen2.5:7b...';
+      ollama pull qwen2.5:7b;
+      echo 'Model pulled successfully!';
+      "
+    restart: "no" # Контейнер завершится после скачивания
+
+  app:
+    build: .
+    container_name: news-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_started
+      ollama:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/news_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+
+
+      NEWS_LLM_ENABLED: "true"
+      NEWS_LLM_BASE_URL: "http://ollama:11434/v1"
+      NEWS_LLM_API_KEY: "ollama"
+      NEWS_LLM_MODEL: "qwen2.5:7b"
+      NEWS_REQUEST_TIMEOUT: "PT3M"
+
+volumes:
+  pgdata:
+  ollama_data:
