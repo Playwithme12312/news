@@ -49,10 +49,14 @@ public class SummaryService {
                     .map(n -> "- [" + n.getTitle() + "](" + n.getLink() + "). " + (n.getSummary() == null ? "" : n.getSummary()))
                     .collect(Collectors.joining("\n"));
 
-            String systemPrompt = "Ты редактор новостей. Сделай краткую сводку на русском: 5-10 главных событий, без воды. " +
-                    "Обязательно используй Markdown для форматирования. Каждый пункт должен содержать кликабельную ссылку на источник в формате [Текст](ссылка).";
+            String systemPrompt = "Ты профессиональный редактор-полиглот. Твоя задача — прочитать новости (даже если они на английском языке) " +
+                    "и сделать краткую сводку СТРОГО НА РУССКОМ ЯЗЫКЕ. " +
+                    "Обязательно переводи суть английских новостей на русский. " +
+                    "Формат: 5-10 главных событий. Обязательно используй кликабельные ссылки в формате Markdown [Текст](ссылка).";
 
-            return callLlm(systemPrompt, "Новости:\n" + context, llm);
+            String userPrompt = "Пожалуйста, переведи эти новости на русский язык и сделай из них краткую сводку на русском:\n" + context;
+
+            return callLlm(systemPrompt, userPrompt, llm);
         } catch (Exception e) {
             log.warn("LLM summary failed, fallback used: {}", e.toString());
             return fallback;
@@ -65,7 +69,7 @@ public class SummaryService {
             return "Нейросеть отключена в настройках.";
         }
 
-        // 1. Берем новости из БД
+
         Instant since = Instant.now().minus(period.duration());
         List<News> news = repository.findByPublishedAtAfterOrderByPublishedAtDesc(since);
 
@@ -125,12 +129,12 @@ public class SummaryService {
         return content.isMissingNode() ? "" : content.asText();
     }
 
-    // Метод для получения "живого" контекста (без параметров)
+
     private String fetchLiveContext() {
         StringBuilder context = new StringBuilder();
         log.info("ИИ запрашивает данные из интернета в реальном времени...");
 
-        // Берем только первые 3 источника, чтобы не было таймаута
+
         List<String> limitedSources = props.sources();
 
         for (String url : limitedSources) {
