@@ -22,7 +22,7 @@ public class CleanupService {
         log.info("Запуск очистки старых новостей из БД...");
 
 
-        Instant cutoffDate = Instant.now().minus(8, ChronoUnit.DAYS);
+        Instant cutoffDate = Instant.now().minus(5, ChronoUnit.DAYS);
 
         repository.deleteByPublishedAtBefore(cutoffDate);
 
