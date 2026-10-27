@@ -29,7 +29,8 @@
 Откройте терминал (Командную строку или PowerShell) в папке с проектом (там, где лежит файл docker-compose.yml) и выполните команду:
 ```bash
 
-docker compose up -d
+docker compose up -d --build
+
 ```
 Docker начнет сборку проекта и скачивание необходимых образов.
 
